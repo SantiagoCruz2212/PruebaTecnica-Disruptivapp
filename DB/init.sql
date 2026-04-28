@@ -103,7 +103,6 @@ CREATE TABLE automation_logs (
 );
 
 CREATE INDEX idx_automation_ticket ON automation_logs(ticket_id);
--- Índice parcial: el worker solo consulta los pendientes
 CREATE INDEX idx_automation_pending ON automation_logs(status) WHERE status = 'pending';
 
 -- ============================================================
@@ -131,30 +130,30 @@ CREATE TRIGGER trg_tickets_updated_at
 -- ============================================================
 
 INSERT INTO users (id, name, email, role) VALUES
-    ('a0000000-0000-0000-0000-000000000001', 'Admin Sistema',    'admin@empresa.com',   'admin'),
-    ('a0000000-0000-0000-0000-000000000002', 'Ana García',       'ana@empresa.com',     'agent'),
-    ('a0000000-0000-0000-0000-000000000003', 'Carlos Méndez',    'carlos@empresa.com',  'agent'),
-    ('a0000000-0000-0000-0000-000000000004', 'Laura Ruiz',       'laura@empresa.com',   'requester');
+    ('a308c293-aff5-4d17-8fd4-66a303e7c026', 'Admin Sistema',    'admin@empresa.com',   'admin'),
+    ('fab94932-9522-4317-8747-7ee26734d0bf', 'Ana García',       'ana@empresa.com',     'agent'),
+    ('e364233d-d3a7-4fbf-92c3-f7e1c3c89df7', 'Carlos Méndez',    'carlos@empresa.com',  'agent'),
+    ('618e8400-d2d3-428d-9c52-ee45c12ea93d', 'Laura Ruiz',       'laura@empresa.com',   'requester');
 
 INSERT INTO tickets (title, description, status, priority, created_by, assigned_to) VALUES
     (
         'Error al iniciar sesión en el portal',
         'Los usuarios no pueden autenticarse desde las 8am. El sistema devuelve error 401.',
         'in_progress', 'high',
-        'a0000000-0000-0000-0000-000000000004',
-        'a0000000-0000-0000-0000-000000000002'
+        '618e8400-d2d3-428d-9c52-ee45c12ea93d',
+        'fab94932-9522-4317-8747-7ee26734d0bf'
     ),
     (
         'Lentitud en módulo de reportes',
         'La generación de reportes tarda más de 5 minutos cuando antes tardaba segundos.',
         'pending', 'medium',
-        'a0000000-0000-0000-0000-000000000004',
+        '618e8400-d2d3-428d-9c52-ee45c12ea93d',
         NULL
     ),
     (
         'Actualizar certificado SSL',
         'El certificado vence en 10 días. Requiere renovación antes del vencimiento.',
         'resolved', 'low',
-        'a0000000-0000-0000-0000-000000000001',
-        'a0000000-0000-0000-0000-000000000003'
+        'a308c293-aff5-4d17-8fd4-66a303e7c026',
+        'e364233d-d3a7-4fbf-92c3-f7e1c3c89df7'
     );

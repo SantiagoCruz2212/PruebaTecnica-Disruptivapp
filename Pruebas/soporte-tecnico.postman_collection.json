@@ -1,0 +1,493 @@
+{
+  "info": {
+    "name": "Soporte Técnico API",
+    "description": "Colección completa de endpoints para el módulo de gestión de solicitudes de soporte técnico.\n\n**Arquitectura:** Controller → Service → Repository\n**Patrones:** DTO + Observer (automatizaciones desacopladas)\n\n## Cómo usar\n1. Levantar la DB: `docker compose up -d` en la carpeta `/DB`\n2. Levantar el backend: `npm run start:dev` en la carpeta `/Back`\n3. Los UUIDs de usuarios seed están disponibles como variables de colección.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "adminId",
+      "value": "a308c293-aff5-4d17-8fd4-66a303e7c026",
+      "description": "Admin Sistema",
+      "type": "string"
+    },
+    {
+      "key": "agentAnaId",
+      "value": "fab94932-9522-4317-8747-7ee26734d0bf",
+      "description": "Ana García (agent)",
+      "type": "string"
+    },
+    {
+      "key": "agentCarlosId",
+      "value": "e364233d-d3a7-4fbf-92c3-f7e1c3c89df7",
+      "description": "Carlos Méndez (agent)",
+      "type": "string"
+    },
+    {
+      "key": "requesterId",
+      "value": "618e8400-d2d3-428d-9c52-ee45c12ea93d",
+      "description": "Laura Ruiz (requester)",
+      "type": "string"
+    },
+    {
+      "key": "ticketId",
+      "value": "",
+      "description": "Se setea automáticamente al crear un ticket",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Tickets",
+      "description": "Gestión completa de solicitudes de soporte técnico",
+      "item": [
+        {
+          "name": "Crear ticket (alta prioridad, con asignación)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('ticketId', body.id);",
+                  "    console.log('ticketId guardado:', body.id);",
+                  "}",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Ticket tiene id', () => pm.expect(pm.response.json()).to.have.property('id'));",
+                  "pm.test('Estado inicial es pending', () => pm.expect(pm.response.json().status).to.eql('pending'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Caída del servidor de producción\",\n  \"description\": \"El servidor principal no responde desde las 14:30. Los usuarios no pueden acceder a la plataforma.\",\n  \"priority\": \"high\",\n  \"createdBy\": \"{{requesterId}}\",\n  \"assignedTo\": \"{{agentAnaId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"]
+            },
+            "description": "Crea una solicitud de soporte con prioridad alta y responsable asignado de inmediato.\n\n**Post-condición:** Guarda el `id` del ticket en la variable `{{ticketId}}` para usarlo en las siguientes peticiones.\n\n**Automatización:** Al asignar responsable, se dispara el evento `ticket.assigned` de forma asíncrona y se registra en `automation_logs`."
+          }
+        },
+        {
+          "name": "Crear ticket (sin asignar, prioridad media)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('assignedTo es null', () => pm.expect(pm.response.json().assignedTo).to.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Lentitud en módulo de reportes\",\n  \"description\": \"La generación de reportes tarda más de 5 minutos. Antes tardaba segundos.\",\n  \"priority\": \"medium\",\n  \"createdBy\": \"{{requesterId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"]
+            },
+            "description": "Crea un ticket sin asignar responsable. El campo `assignedTo` es opcional."
+          }
+        },
+        {
+          "name": "Crear ticket — error: body inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta tiene mensaje de error', () => pm.expect(pm.response.json()).to.have.property('message'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"createdBy\": \"no-es-un-uuid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"]
+            },
+            "description": "Verifica que el ValidationPipe rechaza datos malformados (título vacío, UUID inválido, descripción faltante)."
+          }
+        },
+        {
+          "name": "Listar tickets (sin filtros, página 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta tiene data, total, page, lastPage', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('data');",
+                  "    pm.expect(body).to.have.property('total');",
+                  "    pm.expect(body).to.have.property('page');",
+                  "    pm.expect(body).to.have.property('lastPage');",
+                  "});",
+                  "pm.test('data es un array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tickets?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Lista todos los tickets paginados. Devuelve `data`, `total`, `page` y `lastPage`."
+          }
+        },
+        {
+          "name": "Listar tickets filtrados por estado: pending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Todos los tickets tienen status pending', () => {",
+                  "    const tickets = pm.response.json().data;",
+                  "    tickets.forEach(t => pm.expect(t.status).to.eql('pending'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tickets?status=pending&page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"],
+              "query": [
+                { "key": "status", "value": "pending" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Filtra únicamente los tickets en estado `pending`."
+          }
+        },
+        {
+          "name": "Listar tickets filtrados por estado: in_progress",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tickets?status=in_progress&page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"],
+              "query": [
+                { "key": "status", "value": "in_progress" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar tickets filtrados por prioridad: high",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tickets?priority=high&page=1&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"],
+              "query": [
+                { "key": "priority", "value": "high" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            },
+            "description": "Combina filtro de prioridad con paginación reducida."
+          }
+        },
+        {
+          "name": "Listar tickets — filtro combinado (status + priority)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tickets?status=pending&priority=high&page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"],
+              "query": [
+                { "key": "status", "value": "pending" },
+                { "key": "priority", "value": "high" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Filtra tickets pendientes y de alta prioridad simultáneamente."
+          }
+        },
+        {
+          "name": "Dashboard — métricas generales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta tiene total, byStatus, byPriority', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('total');",
+                  "    pm.expect(body).to.have.property('byStatus');",
+                  "    pm.expect(body).to.have.property('byPriority');",
+                  "});",
+                  "pm.test('total es número', () => pm.expect(pm.response.json().total).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tickets/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "dashboard"]
+            },
+            "description": "Retorna el total de solicitudes, cantidad agrupada por estado y cantidad agrupada por prioridad.\n\nEjemplo de respuesta:\n```json\n{\n  \"total\": 10,\n  \"byStatus\": { \"pending\": 4, \"in_progress\": 4, \"resolved\": 2 },\n  \"byPriority\": { \"low\": 2, \"medium\": 5, \"high\": 3 }\n}\n```"
+          }
+        },
+        {
+          "name": "Cambiar estado → in_progress",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Estado actualizado a in_progress', () => pm.expect(pm.response.json().status).to.eql('in_progress'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"changedBy\": \"{{adminId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/{{ticketId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "{{ticketId}}", "status"]
+            },
+            "description": "Cambia el estado a `in_progress`. Usa el `ticketId` guardado al crear el primer ticket.\n\n**Validación:** Si el ticket ya está en `resolved`, devuelve 400."
+          }
+        },
+        {
+          "name": "Cambiar estado → resolved",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Estado actualizado a resolved', () => pm.expect(pm.response.json().status).to.eql('resolved'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\",\n  \"changedBy\": \"{{agentAnaId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/{{ticketId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "{{ticketId}}", "status"]
+            },
+            "description": "Cierra el ticket marcándolo como `resolved`."
+          }
+        },
+        {
+          "name": "Cambiar estado — error: ticket ya resuelto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Mensaje indica ticket resuelto', () => {",
+                  "    const msg = pm.response.json().message;",
+                  "    pm.expect(msg).to.include('resuelto');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"changedBy\": \"{{adminId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/{{ticketId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "{{ticketId}}", "status"]
+            },
+            "description": "Intenta cambiar el estado de un ticket ya resuelto. Debe devolver 400 con mensaje de error.\n\n**Ejecutar después** del request 'Cambiar estado → resolved'."
+          }
+        },
+        {
+          "name": "Cambiar estado — error: ticket no encontrado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"changedBy\": \"{{adminId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/00000000-0000-0000-0000-000000000000/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "00000000-0000-0000-0000-000000000000", "status"]
+            },
+            "description": "UUID válido pero inexistente en la base de datos. Debe devolver 404."
+          }
+        },
+        {
+          "name": "Asignar responsable (Ana García → Carlos Méndez)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Responsable asignado correctamente', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.assignedTo).to.not.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedTo\": \"{{agentCarlosId}}\",\n  \"changedBy\": \"{{adminId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/{{ticketId}}/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "{{ticketId}}", "assign"]
+            },
+            "description": "Asigna el ticket a Carlos Méndez.\n\n**Automatización:** Dispara el evento `ticket.assigned` de forma asíncrona. El listener `SendEmailListener` registra la acción en `automation_logs` y simula el envío del correo (visible en los logs del servidor).\n\n**Validación:** Si el UUID del usuario no existe, devuelve 404."
+          }
+        },
+        {
+          "name": "Asignar responsable — error: usuario inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Mensaje indica usuario no encontrado', () => {",
+                  "    const msg = pm.response.json().message;",
+                  "    pm.expect(msg).to.include('no encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedTo\": \"99999999-9999-9999-9999-999999999999\",\n  \"changedBy\": \"{{adminId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets/{{ticketId}}/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "{{ticketId}}", "assign"]
+            },
+            "description": "UUID de usuario con formato válido pero que no existe en la base de datos. Debe devolver 404."
+          }
+        }
+      ]
+    }
+  ]
+}

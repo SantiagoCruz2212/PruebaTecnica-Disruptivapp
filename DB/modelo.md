@@ -34,10 +34,10 @@
           │                       │                                │
           │ N                     │ N                              │
           ▼                       ▼                                │
-┌────────────────────┐  ┌──────────────────────────────────────┐  │
-│  ticket_history    │  │         automation_logs               │  │
-├────────────────────┤  ├──────────────────────────────────────┤  │
-│ id        UUID PK  │  │ id            UUID  PK                │  │
+┌────────────────────┐  ┌──────────────────────────────────────┐   │
+│  ticket_history    │  │         automation_logs              │   │
+├────────────────────┤  ├──────────────────────────────────────┤   │
+│ id        UUID PK  │  │ id            UUID  PK               │   │
 │ ticket_id UUID FK  │  │ ticket_id     UUID  FK → tickets.id   │  │
 │ changed_by UUID FK │──┘│ trigger_type  VARCHAR(100)           │  │
 │ old_status enum    │   │ action_type   VARCHAR(100)           │  │

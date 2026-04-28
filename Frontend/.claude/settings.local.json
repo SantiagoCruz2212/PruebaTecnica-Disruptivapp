@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Santiago Cruz/Desktop/Prueba Técnica- Disruptivapp/**)",
+      "Read(//c/Users/Santiago Cruz/Desktop/Prueba Técnica- Disruptivapp/Back/**)",
+      "Bash(psql --version)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(docker-compose --version)",
+      "Bash(npm run *)",
+      "Bash(echo \"PID: $!\")"
+    ]
+  }
+}
